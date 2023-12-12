@@ -17,7 +17,7 @@ router.get('/', async (request, response) => {
             search["product_name"] = 1;
         }
         console.log(search);
-        const data = await OurProduct.find({"product_name": {$regex: request.query.search}}).sort(search).limit(request.query.pageSize).skip(request.query.pageSize * (request.query.page - 1));
+        const data = await OurProduct.find({ "product_name": { $regex: request.query.search } }).sort(search).limit(request.query.pageSize).skip(request.query.pageSize * (request.query.page - 1));
         console.log(data)
         response.json(data)
     }
@@ -29,13 +29,35 @@ router.get('/', async (request, response) => {
 
 //update to ourProduct
 router.put('/:product_id', (request, response) => {
-    console.log(request.params.product_id, request.body.post_date);
-    OurProduct.findOneAndUpdate({ product_id: request.params.product_id }, { post_date: request.body.post_date, sale_price: request.body.sale_price })
-        .then((product => {
+    // console.log(request.params.product_id, typeof request.body.post_date, request.body.post_date);
+    const t1 = new Date(request.body.post_date);
+    t1.setHours(8, 0, 0, 0);
+    const t2 = new Date(t1);
+    t2.setDate(t1.getDate() + 1);
+    console.log(t1, t2)
+    OurProduct.find({
+        post_date: {
+            "$gte": t1,
+            "$lt": t2,
+        },
+        product_id: {"$ne": request.params.product_id}
+    }).count().then( count => {
+        console.log(count)
+        if (count < 2) {
+            OurProduct.findOneAndUpdate({ product_id: request.params.product_id }, { post_date: request.body.post_date, sale_price: request.body.sale_price })
+                .then((product => {
+                    response.send({
+                        message: 'Updated successfully!'
+                    })
+                }))
+        }
+        else {
+            console.log("Already two produsts are existed");
             response.send({
-                message: 'Updated successfully!'
+                message: "Already two produsts are existed"
             })
-        }))
+        }
+    }).catch(err => console.log(err))
 })
 
 //add to cart
