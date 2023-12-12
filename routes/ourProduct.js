@@ -29,7 +29,7 @@ router.get('/', async (request, response) => {
 
 //update to ourProduct
 router.put('/:product_id', (request, response) => {
-    // console.log(request.params.product_id, request.body.post_date);
+    console.log(request.params.product_id, request.body.post_date);
     OurProduct.findOneAndUpdate({ product_id: request.params.product_id }, { post_date: request.body.post_date, sale_price: request.body.sale_price })
         .then((product => {
             response.send({

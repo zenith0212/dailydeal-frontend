@@ -6,13 +6,13 @@ const fuzz = require('fuzzball');
 const User = require("../db/Model/userModel");
 
 // const uuidv4 = require('uuid');
-const {Novu} = require("@novu/node");
+const { Novu } = require("@novu/node");
 // const {response, application} = require("express"); const sharp =
 // require('sharp'); Novu api key
 const cron = require('node-cron');
 
 const novu = new Novu("2792de1aa02ee6b16edec7d66f1bcd8b");
-const sendNovuNotification = async(recipient, email, name, src, dealname) => {
+const sendNovuNotification = async (recipient, email, name, src, dealname) => {
     try {
         let response = await novu.trigger('wishlist', {
             to: {
@@ -23,7 +23,7 @@ const sendNovuNotification = async(recipient, email, name, src, dealname) => {
             payload: {
                 name: name,
                 dealsrc: src,
-                dealname: dealname 
+                dealname: dealname
             }
         });
         console.log(response);
@@ -38,18 +38,18 @@ const formatDate = (date) => {
         day = '' + d.getDate(),
         year = d.getFullYear();
 
-    if (month.length < 2) 
+    if (month.length < 2)
         month = '0' + month;
-    if (day.length < 2) 
+    if (day.length < 2)
         day = '0' + day;
-    
+
     return [year, month, day].join('-');
 }
 // let localTime = new Date();
 // const phonenumber = Math.floor(Math.random() * 1000000) + '5'
 // console.log(phonenumber)
 // sendNovuNotification(phonenumber, "harryjulin0411@gmail.com", "name","https://cdn.brandsgateway.com/2020/02/643506-white-silk-i-love-italy-cami-t-shirt.jpg", "white silk cami short")
-const alertToUsers = async() => {
+const alertToUsers = async () => {
     let localTime = new Date();
 
     const phonenumber = Math.floor(Math.random() * 1000000) + '5'
@@ -57,8 +57,16 @@ const alertToUsers = async() => {
     sendNovuNotification(phonenumber, "harryjulin0411@gmail.com", localTime.toDateString())
     console.log('send notification to whishlist users at 8 AM');
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(t1);
+    tomorrow.setDate(tomorrow.getDate() + 1);
     const todayProducts = await OurProduct.find({
-        post_date: formatDate(new Date())
+        post_date: {
+            "$gte": today,
+            "$lt": tomorrow
+        }
     });
     // console.log(todayProducts[0].product_name); const wishlist = await
     // WishList.find();
@@ -69,7 +77,7 @@ const alertToUsers = async() => {
         var name = todayProducts[i].product_name;
         for (var j = 0; j < productIdList.length; j++) {
 
-            const data = await OurProduct.findOne({product_id: productIdList[j].product_id})
+            const data = await OurProduct.findOne({ product_id: productIdList[j].product_id })
             // porductDetails.push(data); console.log(productIdList[i].product_id);
             if (!!data === false) {
                 continue;
@@ -80,7 +88,7 @@ const alertToUsers = async() => {
                 if (score >= 50) {
                     console.log(name, compareName, productIdList[j].email);
                     await User
-                        .findOne({email: productIdList[j].email})
+                        .findOne({ email: productIdList[j].email })
                         .then((user) => {
                             phone_number = user.phone_number;
                             sendNovuNotification(user.phone_number, productIdList[j].email, user.first_name + " " + user.last_name, data.product_image, compareName)
@@ -92,66 +100,82 @@ const alertToUsers = async() => {
     // console.log(value);
     response.json(todayProducts);
 };
-cron.schedule('0 8 * * *', alertToUsers, {timeZone: "America/Los_Angeles"});
+cron.schedule('0 8 * * *', alertToUsers, { timeZone: "America/Los_Angeles" });
 
-router.post('/today', async(request, response) => {
+router.post('/today', async (request, response) => {
     try {
+        const today = new Date();
+        today.setHours(8, 0, 0, 0);
+
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(8, 0, 0, 0)
+        console.log(today, tomorrow)
+
         const todayProducts = await OurProduct.find({
-            post_date: formatDate(new Date())
-        });
-        // console.log(todayProducts[0].product_name); const wishlist = await
-        // WishList.find();
-        const productIdList = await WishList.find();
-        var porductDetails = [];
-        for (var i = 0; i < todayProducts.length; i++) {
-            // var id = todayProducts[i].product_id;
-            var name = todayProducts[i].product_name;
-            for (var j = 0; j < productIdList.length; j++) {
-
-                const data = await OurProduct.findOne({product_id: productIdList[j].product_id})
-                // porductDetails.push(data); console.log(productIdList[i].product_id);
-                if (!!data === false) {
-                    continue;
-                } else {
-                    console.log(data);
-                    var compareName = data.product_name;
-                    var score = fuzz.partial_ratio(name, compareName);
-                    if (score >= 50) {
-                        console.log(name, compareName, productIdList[j].email);
-                    }
-                }
+            post_date: {
+                "$gte": today,
+                "$lt": tomorrow,
             }
+        }).limit(2);
+        // const productIdList = await WishList.find();
+        // var porductDetails = [];
+        // for (var i = 0; i < todayProducts.length; i++) {
+        //     // var id = todayProducts[i].product_id;
+        //     var name = todayProducts[i].product_name;
+        //     for (var j = 0; j < productIdList.length; j++) {
 
-            // const wishProductList = await
-            // WishList.find({product_id:productIdList.product_id})
+        //         const data = await OurProduct.findOne({product_id: productIdList[j].product_id})
+        //         // porductDetails.push(data); console.log(productIdList[i].product_id);
+        //         if (!!data === false) {
+        //             continue;
+        //         } else {
+        //             console.log(data);
+        //             var compareName = data.product_name;
+        //             var score = fuzz.partial_ratio(name, compareName);
+        //             if (score >= 50) {
+        //                 console.log(name, compareName, productIdList[j].email);
+        //             }
+        //         }
+        //     }
 
-        }
+        //     // const wishProductList = await
+        //     // WishList.find({product_id:productIdList.product_id})
+
+        // }
         // console.log(value);
         response.json(todayProducts);
     } catch (error) {
         response
             .status(500)
-            .json({message: error.message})
+            .json({ message: error.message })
     }
 
 });
 
-router.post('/yesterday', async(request, response) => {
+router.post('/yesterday', async (request, response) => {
     const yesterday = new Date();
+    yesterday.setHours(8, 0, 0, 0);
     yesterday.setDate(yesterday.getDate() - 1);
+    console.log("yesterday", yesterday)
     try {
-        const yesterdayProducts = await OurProduct.find({post_date: yesterday});
+        const yesterdayProducts = await OurProduct.find({
+            post_date: {
+                "$gte": yesterday,
+                "$lt": new Date().setHours(8,0,0,0)
+            }
+        }).limit(2);
         // console.log(request.body.post_date)
         response.json(yesterdayProducts)
     } catch (error) {
         response
             .status(500)
-            .json({message: error.message})
+            .json({ message: error.message })
     }
 
 });
 
-router.post('/previous', async(request, response) => {
+router.post('/previous', async (request, response) => {
     try {
         const data = await OurProduct
             .find()
@@ -164,7 +188,7 @@ router.post('/previous', async(request, response) => {
     } catch (error) {
         response
             .status(500)
-            .json({message: error.message})
+            .json({ message: error.message })
     }
 
 });
@@ -174,7 +198,7 @@ const end_date = new Date();
 start_date.setDate(today.getDate() - 8);
 end_date.setDate(today.getDate() - 1);
 
-router.get('/previous/all', async(request, response) => {
+router.get('/previous/all', async (request, response) => {
     const pageSize = request.query.pageSize
         ? parseInt(request.query.pageSize)
         : 0;
@@ -197,11 +221,11 @@ router.get('/previous/all', async(request, response) => {
     } catch (error) {
         response
             .status(500)
-            .json({message: error.message})
+            .json({ message: error.message })
     }
 });
 
-router.get('/previous/count', async(request, response) => {
+router.get('/previous/count', async (request, response) => {
 
     const count = await OurProduct
         .find()
